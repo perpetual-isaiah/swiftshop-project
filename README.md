@@ -12,8 +12,8 @@ This project demonstrates how different services written in different languages 
 | **User Service** | ✅ Complete | 100% | Person 1 |
 | **Product Service** | ⏳ In Progress | 0% | Person 2 |
 | **Order Service** | ⏳ In Progress | 0% | Person 3 |
-| **API Gateway** | ⏳ Pending | 0% | Person 1 |
-| **Frontend** | ⏳ Pending | 0% | TBD |
+| **API Gateway** |  Complete | 100% | Person 1 |
+| **Frontend** | ⏳ In progress | 20% | TBD |
 
 ---
 
@@ -104,7 +104,7 @@ POST   /api/orders/:id/pay     - Process payment
 
 ---
 
-### 4. ⏳ API Gateway (TypeScript + Node.js)
+### 4.  API Gateway (TypeScript + Node.js)
 **Port:** 8000  
 **Status:** Basic Setup Only
 
@@ -127,7 +127,7 @@ POST   /api/orders/:id/pay     - Process payment
 
 ### 5. ⏳ Frontend (React)
 **Port:** 3000  
-**Status:** Not Started
+**Status:** Started
 
 **Responsibilities:**
 - User interface  
@@ -160,12 +160,12 @@ swiftshop-project/
 │   ├── src/
 │   └── pom.xml
 │
-├── api-gateway/               ⏳ TODO
+├── api-gateway/               Completed
 │   ├── src/
 │   ├── package.json
 │   └── tsconfig.json
 │
-├── frontend/                  ⏳ TODO
+├── frontend/                  ⏳ In progress
 │   └── (React app)
 │
 ├── docker/                    ⏳ TODO
@@ -353,7 +353,7 @@ Detailed documentation for each service:
 | Person 1 | User Service + API Gateway | User Service ✅ |
 | Person 2 | Product Service | Not Started |
 | Person 3 | Order Service | Not Started |
-| TBD | Frontend | Not Started |
+| TBD | Frontend | Started |
 
 ---
 
