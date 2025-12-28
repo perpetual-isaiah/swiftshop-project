@@ -100,6 +100,7 @@ exports.loginUser = async (req, res) => {
   }
 };
 
+<<<<<<< Updated upstream
 // ==========================================
 // GET CURRENT USER
 // ==========================================
@@ -181,3 +182,14 @@ exports.getAllUsers = async (req, res) => {
     });
   }
 };
+=======
+// GET ALL USERS (TEST ROUTE)
+exports.getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find().select("-password");
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+>>>>>>> Stashed changes
