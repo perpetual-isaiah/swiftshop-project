@@ -5,29 +5,32 @@ This project demonstrates how different services written in different languages 
 
 ---
 
-## 🚀 Project Status
+## 🚀 Project Status - UPDATED
 
-| Service | Status | Completion | Assigned To |
-|---------|--------|------------|-------------|
-| **User Service** | ✅ Complete | 100% | Person 1 |
-| **Product Service** | ⏳ In Progress | 0% | Person 2 |
-| **Order Service** | ⏳ In Progress | 0% | Person 3 |
-| **API Gateway** |  Complete | 100% | Person 1 |
-| **Frontend** | ⏳ In progress | 20% | TBD |
+| Service | Status | Completion | Assigned To | Notes |
+|---------|--------|------------|-------------|-------|
+| **User Service** | ✅ Complete | 100% | Person 1 | Fully functional with JWT auth |
+| **Product Service** | ❌ Not Started | 0% | Person 2 | **NEEDS IMMEDIATE ATTENTION** |
+| **Order Service** | ✅ Complete | 100% | Person 3 | Basic CRUD implemented with H2 database |
+| **API Gateway** | ✅ Complete | 100% | Person 1 | Routes configured for all services |
+| **Frontend** | ⏳ In Progress | 70% | Person 1 | Basic structure only |Person 3 order service
 
 ---
 
-## 🧩 Microservices Overview
+## ✅ COMPLETED SERVICES
 
 ### 1. ✅ User Service (Node.js + Express + MongoDB) - **COMPLETE**
 **Port:** 3001  
-**Status:** Running and Ready for Integration
+**Status:** Production Ready ✅
 
-**Responsibilities:**
-- User registration  
-- User login  
-- JWT authentication  
-- User profile management  
+**Features Implemented:**
+- ✅ User registration with password hashing
+- ✅ User login with JWT authentication
+- ✅ JWT token generation and validation
+- ✅ User profile management (get/update)
+- ✅ Protected routes middleware
+- ✅ Get all users (admin functionality)
+- ✅ Logout functionality
 
 **Available Endpoints:**
 ```
@@ -46,30 +49,94 @@ npm install
 npm run dev
 ```
 
-**Test It:**
-```bash
-# Register
-curl -X POST http://localhost:3001/api/users/register \
-  -H "Content-Type: application/json" \
-  -d '{"name":"John Doe","email":"john@test.com","password":"Test1234"}'
-
-# Login
-curl -X POST http://localhost:3001/api/users/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"john@test.com","password":"Test1234"}'
-```
+**Database:** MongoDB (local: `mongodb://localhost:27017/swiftshop`)
 
 ---
 
-### 2. ⏳ Product Service (Python + FastAPI/Flask + PostgreSQL + Elasticsearch)
-**Port:** 5000  
-**Status:** Not Started
+### 2. ✅ Order Service (Java + Spring Boot + H2 Database) - **COMPLETE**
+**Port:** 8082  
+**Status:** Functional ✅
 
-**Responsibilities:**
-- Product listing  
-- Categories  
-- Inventory management  
-- Product search and filtering  
+**Features Implemented:**
+- ✅ Create new orders
+- ✅ Get order by ID
+- ✅ Get orders by user ID
+- ✅ Process payment (update order status to PAID)
+- ✅ Order status tracking (CREATED, PAID, CANCELLED)
+- ✅ H2 in-memory database configured
+- ✅ JPA/Hibernate integration
+
+**Available Endpoints:**
+```
+POST   /api/orders             - Create new order
+GET    /api/orders/{id}        - Get order by ID
+GET    /api/orders/user/{userId} - Get all orders for a user
+PUT    /api/orders/{id}/pay    - Mark order as paid
+```
+
+**How to Run:**
+```bash
+cd order-service
+./mvnw spring-boot:run
+```
+
+**Database:** H2 (in-memory)
+- Console: http://localhost:8082/h2-console
+- JDBC URL: `jdbc:h2:mem:ordersdb`
+- Username: `sa`
+- Password: (empty)
+
+**Note:** Currently using H2 in-memory database. For production, should migrate to MySQL as per project requirements.
+
+---
+
+### 3. ✅ API Gateway (TypeScript + Node.js) - **COMPLETE**
+**Port:** 8000  
+**Status:** Fully Configured ✅
+
+**Features Implemented:**
+- ✅ Single entry point for all client requests
+- ✅ Request routing to microservices
+- ✅ Authentication header forwarding
+- ✅ CORS enabled
+- ✅ Error handling
+- ✅ Health check endpoint
+- ✅ Service status monitoring
+
+**Routes Configured:**
+```
+/                    → Gateway health info
+/health              → Gateway health check
+/auth/register       → User Service
+/auth/login          → User Service
+/users/*             → User Service (with auth forwarding)
+/products/*          → Product Service (placeholder - returns 503)
+/orders/*            → Order Service (placeholder - returns 503)
+```
+
+**How to Run:**
+```bash
+cd api-gateway
+npm install
+npm run dev
+```
+
+**Current Limitation:** Product and Order service routes return 503 until those services are integrated.
+
+---
+
+## ❌ PENDING SERVICE
+
+### 4. ❌ Product Service (Python + FastAPI + PostgreSQL + Elasticsearch)
+**Port:** 5000  
+**Status:** **NOT STARTED - CRITICAL**
+
+**Required Features:**
+- Product CRUD operations
+- Category management
+- Inventory tracking
+- Product search with Elasticsearch
+- Filtering capabilities
 
 **Required Endpoints:**
 ```
@@ -81,98 +148,90 @@ DELETE /api/products/:id       - Delete product
 GET    /api/products/search    - Search products
 ```
 
----
+**Technology Stack:**
+- FastAPI or Flask
+- PostgreSQL database
+- Elasticsearch for search
 
-### 3. ⏳ Order Service (Java + Spring Boot + MySQL)
-**Port:** 8080  
-**Status:** Not Started
-
-**Responsibilities:**
-- Order creation  
-- Order history  
-- Payment processing (Stripe)  
-- Order status tracking  
-
-**Required Endpoints:**
-```
-POST   /api/orders             - Create order
-GET    /api/orders             - Get user orders
-GET    /api/orders/:id         - Get order by ID
-PUT    /api/orders/:id/status  - Update order status
-POST   /api/orders/:id/pay     - Process payment
-```
+**Current State:** Only has a basic `main.py` with a single root endpoint.
 
 ---
 
-### 4.  API Gateway (TypeScript + Node.js)
-**Port:** 8000  
-**Status:** Basic Setup Only
-
-**Responsibilities:**
-- Route requests to microservices  
-- Authentication middleware  
-- Request logging  
-- Rate limiting  
-- Error handling  
-
-**Routes to Configure:**
-```
-/auth/*      → user-service:3001
-/users/*     → user-service:3001
-/products/*  → product-service:5000
-/orders/*    → order-service:8080
-```
-
----
+## ⏳ IN PROGRESS
 
 ### 5. ⏳ Frontend (React)
 **Port:** 3000  
-**Status:** Started
+**Status:** Early Stage (70%)
 
-**Responsibilities:**
-- User interface  
-- Product browsing  
-- Shopping cart  
-- Checkout process  
-- User dashboard  
+**Planned Features:**
+- User registration/login UI
+- Product browsing
+- Shopping cart
+- Checkout process
+- User dashboard
 
 ---
 
-## 📁 Project Structure
+## 📊 Integration Status
 
-```
-swiftshop-project/
-├── user-service/              ✅ COMPLETE
-│   ├── controllers/
-│   ├── middleware/
-│   ├── models/
-│   ├── routes/
-│   ├── .env
-│   ├── server.js
-│   ├── package.json
-│   └── README.md             (see user-service/README.md for details)
-│
-├── product-service/           ⏳ TODO
-│   ├── main.py
-│   └── requirements.txt
-│
-├── order-service/             ⏳ TODO
-│   ├── src/
-│   └── pom.xml
-│
-├── api-gateway/               Completed
-│   ├── src/
-│   ├── package.json
-│   └── tsconfig.json
-│
-├── frontend/                  ⏳ In progress
-│   └── (React app)
-│
-├── docker/                    ⏳ TODO
-│   └── docker-compose.yml
-│
-└── README.md                  (this file)
-```
+### Working Integrations:
+✅ API Gateway ↔ User Service (fully tested)
+✅ Order Service (standalone, ready for integration)
+
+### Pending Integrations:
+❌ API Gateway ↔ Order Service (needs route update from placeholder)
+❌ API Gateway ↔ Product Service (service doesn't exist yet)
+❌ Frontend ↔ API Gateway (frontend not built)
+
+---
+
+## 🎯 NEXT STEPS (Priority Order)
+
+### CRITICAL - Week 1-2:
+1. **Product Service Development** (Person 2 - URGENT)
+   - Set up FastAPI/Flask project structure
+   - Configure PostgreSQL connection
+   - Implement Product model and CRUD endpoints
+   - Set up Elasticsearch for search
+   - Test endpoints individually
+
+2. **Order Service Integration** (Person 3)
+   - Update Order Service to use MySQL instead of H2
+   - Integrate payment gateway (Stripe) for real payment processing
+   - Add order-product relationship
+
+3. **API Gateway Updates** (Person 1)
+   - Update `/orders/*` routes to forward to Order Service on port 8082
+   - Update `/products/*` routes once Product Service is ready
+   - Add rate limiting
+   - Add request logging
+
+### IMPORTANT - Week 3-4:
+4. **Frontend Development** (Person 1 or assign to someone)
+   - Build authentication pages (login/register)
+   - Create product listing page
+   - Build shopping cart
+   - Implement checkout flow
+
+5. **Service Communication**
+   - Implement message queue (RabbitMQ or Kafka) for async operations
+   - Set up service discovery (optional)
+
+### NICE TO HAVE - Week 5+:
+6. **Testing**
+   - Unit tests for each service
+   - Integration tests
+   - End-to-end tests
+
+7. **Deployment**
+   - Dockerize all services
+   - Create docker-compose.yml
+   - Deploy to cloud (optional)
+
+8. **Documentation**
+   - API documentation with Swagger
+   - Architecture diagrams
+   - User guides
 
 ---
 
@@ -181,69 +240,68 @@ swiftshop-project/
 | Service | Language | Framework | Database | Port |
 |---------|----------|-----------|----------|------|
 | User Service | JavaScript | Express.js | MongoDB | 3001 |
-| Product Service | Python | FastAPI | PostgreSQL | 5000 |
-| Order Service | Java | Spring Boot | MySQL | 8080 |
-| API Gateway | TypeScript | Express/NestJS | - | 8000 |
+| Product Service | Python | FastAPI | PostgreSQL + Elasticsearch | 5000 |
+| Order Service | Java | Spring Boot | H2 (→ MySQL) | 8082 |
+| API Gateway | TypeScript | Express | - | 8000 |
 | Frontend | JavaScript | React | - | 3000 |
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Quick Start Guide
 
 ### Prerequisites
-- Node.js (v18+)
-- Python (v3.9+)
-- Java (JDK 17+)
-- MongoDB
-- PostgreSQL
-- MySQL
-- Docker (optional)
+- Node.js v18+
+- Python 3.9+
+- Java JDK 17+
+- MongoDB (running on localhost:27017)
+- PostgreSQL (for Product Service)
+- MySQL (for Order Service production)
 
-### Quick Start
+### Start All Services:
 
 **1. Start User Service:**
 ```bash
+# Terminal 1
 cd user-service
 npm install
 npm run dev
+# Should see: "User Service running on port 3001"
 ```
 
-**2. Start Product Service:** (when ready)
+**2. Start Order Service:**
 ```bash
+# Terminal 2
+cd order-service
+./mvnw spring-boot:run
+# Should see: "Tomcat started on port(s): 8082"
+```
+
+**3. Start API Gateway:**
+```bash
+# Terminal 3
+cd api-gateway
+npm install
+npm run dev
+# Should see: "API Gateway running on port 8000"
+```
+
+**4. (When Ready) Start Product Service:**
+```bash
+# Terminal 4
 cd product-service
 pip install -r requirements.txt
 python main.py
 ```
 
-**3. Start Order Service:** (when ready)
-```bash
-cd order-service
-./mvnw spring-boot:run
-```
-
-**4. Start API Gateway:** (when configured)
-```bash
-cd api-gateway
-npm install
-npm run dev
-```
-
-**5. Start Frontend:** (when ready)
-```bash
-cd frontend
-npm install
-npm start
-```
-
 ---
 
-## 🧪 Testing the System
+## 🧪 Testing the Current System
 
-### Test User Service (Available Now)
+### Test User Service via API Gateway:
 
 **1. Register a User:**
 ```bash
-curl -X POST http://localhost:3001/api/users/register \
+curl -X POST http://localhost:8000/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Test User",
@@ -254,19 +312,56 @@ curl -X POST http://localhost:3001/api/users/register \
 
 **2. Login:**
 ```bash
-curl -X POST http://localhost:3001/api/users/login \
+curl -X POST http://localhost:8000/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "test@example.com",
     "password": "SecurePass123"
   }'
+# Save the token from response
 ```
 
-**3. Get Profile (use token from login):**
+**3. Get Profile:**
 ```bash
-curl http://localhost:3001/api/users/me \
+curl http://localhost:8000/users/me \
   -H "Authorization: Bearer YOUR_TOKEN_HERE"
 ```
+
+### Test Order Service Directly:
+
+**1. Create Order:**
+```bash
+curl -X POST http://localhost:8082/api/orders \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": 1,
+    "totalAmount": 99.99
+  }'
+```
+
+**2. Get Order by ID:**
+```bash
+curl http://localhost:8082/api/orders/1
+```
+
+**3. Pay for Order:**
+```bash
+curl -X PUT http://localhost:8082/api/orders/1/pay
+```
+
+---
+
+## 🐛 Known Issues
+
+1. **Order Service Database:** Currently using H2 in-memory database. Data is lost on restart. Need to migrate to MySQL.
+
+2. **Order Service Port:** Running on 8082 instead of planned 8080 (likely due to port conflict).
+
+3. **API Gateway Order Routes:** Not yet connected to actual Order Service - returns 503.
+
+4. **No Inter-Service Authentication:** Services don't verify requests from API Gateway yet.
+
+5. **Product Service:** Completely missing - blocking full system integration.
 
 ---
 
@@ -281,7 +376,7 @@ curl http://localhost:3001/api/users/me \
 5. **Document your endpoints**
 6. **Write basic tests**
 
-### Response Format (Standard):
+### Standard Response Format:
 ```json
 {
   "success": true/false,
@@ -290,7 +385,7 @@ curl http://localhost:3001/api/users/me \
 }
 ```
 
-### Error Format (Standard):
+### Standard Error Format:
 ```json
 {
   "success": false,
@@ -303,95 +398,61 @@ curl http://localhost:3001/api/users/me \
 
 ## 🔐 Authentication Flow
 
-1. User registers/logs in via **User Service**
+1. User registers/logs in via **User Service** (through API Gateway)
 2. User Service returns **JWT token**
 3. Client stores token
 4. Client sends token in header: `Authorization: Bearer <token>`
-5. API Gateway validates token
-6. Request forwarded to appropriate service
+5. API Gateway forwards token to appropriate service
+6. Service validates token (future: should validate via User Service)
 
 ---
 
-## 🗓️ Development Timeline
+## 📞 Team Communication
 
-### Week 1 (Current)
-- [x] User Service - Registration & Login
-- [x] User Service - Profile Management
-- [x] User Service - JWT Authentication
-- [ ] API Gateway - Basic Routing
-- [ ] Product Service - Setup
-
-### Week 2
-- [ ] Product Service - CRUD Operations
-- [ ] Order Service - Setup
-- [ ] Order Service - Basic Orders
-- [ ] Frontend - Basic UI
-
-### Week 3
-- [ ] Integration Testing
-- [ ] Docker Setup
-- [ ] Bug Fixes
-- [ ] Documentation
+| Person | Services | Status | Blockers |
+|--------|----------|--------|----------|
+| Person 1 | User Service, API Gateway, Frontend | User + Gateway ✅ | None |
+| Person 2 | Product Service | Not started ❌ | **CRITICAL - Needs to start** |
+| Person 3 | Order Service | Complete ✅ | None (ready for integration) |
 
 ---
 
-## 📚 Service Documentation
+## ⚠️ CRITICAL BLOCKERS
 
-Detailed documentation for each service:
+### 🚨 BLOCKER #1: Product Service Missing
+**Impact:** HIGH  
+**Assignee:** Person 2  
+**Action Required:** Start Product Service development immediately
 
-- **User Service:** [user-service/README.md](user-service/README.md)
-- **Product Service:** Coming soon
-- **Order Service:** Coming soon
-- **API Gateway:** Coming soon
+The entire e-commerce platform cannot function without products. This is the highest priority item.
 
----
+### 🟡 BLOCKER #2: Order Service Database
+**Impact:** MEDIUM  
+**Assignee:** Person 3  
+**Action Required:** Migrate from H2 to MySQL
 
-## 🤝 Team Roles
-
-| Person | Services | Status |
-|--------|----------|--------|
-| Person 1 | User Service + API Gateway | User Service ✅ |
-| Person 2 | Product Service | Not Started |
-| Person 3 | Order Service | Not Started |
-| TBD | Frontend | Started |
+Current in-memory database is not suitable for production.
 
 ---
 
-## 🐛 Known Issues
+## 📅 Updated Timeline
 
-None yet! User Service is working perfectly. ✅
+### Week 1-2 (NOW):
+- [x] User Service
+- [x] Order Service basic implementation
+- [x] API Gateway setup
+- [ ] **Product Service (CRITICAL)**
+- [ ] Order Service MySQL migration
 
----
+### Week 3-4:
+- [ ] Frontend basic pages
+- [ ] Service integration testing
+- [ ] Payment gateway integration
 
-## 📞 Need Help?
-
-**For User Service Issues:**
-- Check [user-service/README.md](user-service/README.md)
-- Verify MongoDB is running
-- Check `.env` file configuration
-
-**For Other Services:**
-- Wait for documentation to be created
-- Contact service owner
-
----
-
-## 🎯 Next Steps
-
-1. **Person 2:** Start Product Service
-   - Setup FastAPI project
-   - Connect to PostgreSQL
-   - Implement basic CRUD
-
-2. **Person 1:** Setup API Gateway
-   - Configure routing to User Service
-   - Add authentication middleware
-   - Prepare for other services
-
-3. **Person 3:** Start Order Service
-   - Setup Spring Boot project
-   - Connect to MySQL
-   - Implement basic order creation
+### Week 5-6:
+- [ ] Docker containerization
+- [ ] Message queue setup
+- [ ] Advanced features
 
 ---
 
@@ -399,11 +460,12 @@ None yet! User Service is working perfectly. ✅
 
 - [x] Project structure created
 - [x] User Service complete
-- [ ] Product Service complete
-- [ ] Order Service complete
-- [ ] API Gateway configured
+- [ ] Product Service complete **← CRITICAL**
+- [x] Order Service basic implementation
+- [x] API Gateway configured
+- [ ] API Gateway connected to Order Service
 - [ ] Frontend built
-- [ ] Services integrated
+- [ ] Services fully integrated
 - [ ] Docker setup
 - [ ] Documentation complete
 - [ ] Testing complete
@@ -431,5 +493,6 @@ By completing this project, you will learn:
 
 ---
 
-**Last Updated:** December 2025  
-**Status:** User Service Complete - Ready for Integration ✅
+**Last Updated:** December 28, 2025  
+**Status:** 3/5 Services Complete - Product Service Development Required ⚠️  
+**Overall Progress:** 60%

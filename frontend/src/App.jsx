@@ -7,6 +7,8 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import Products from './pages/Products';
+import Orders from './pages/Orders';
 import './App.css';
 
 function App() {
@@ -20,6 +22,11 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              
+              {/* Public route - anyone can view products */}
+              <Route path="/products" element={<Products />} />
+              
+              {/* Protected routes */}
               <Route
                 path="/dashboard"
                 element={
@@ -28,6 +35,15 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/orders"
+                element={
+                  <ProtectedRoute>
+                    <Orders />
+                  </ProtectedRoute>
+                }
+              />
+              
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </div>

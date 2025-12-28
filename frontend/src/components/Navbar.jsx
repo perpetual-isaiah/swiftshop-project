@@ -17,8 +17,15 @@ const Navbar = () => {
           SwiftShop
         </Link>
         <div className="navbar-links">
+          <Link to="/products" className="navbar-link">
+            Products
+          </Link>
+          
           {isAuthenticated ? (
             <>
+              <Link to="/orders" className="navbar-link">
+                My Orders
+              </Link>
               <Link to="/dashboard" className="navbar-link">
                 Dashboard
               </Link>
