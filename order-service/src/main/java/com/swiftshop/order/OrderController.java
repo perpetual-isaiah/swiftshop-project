@@ -41,6 +41,12 @@ public class OrderController {
         return orderRepository.findByUserId(userId);
     }
 
+// GET /api/orders/health
+    @GetMapping("/health")
+    public String health() {
+        return "Order Service is healthy";
+    }
+
     // PUT /api/orders/{id}/pay
     @PutMapping("/{id}/pay")
     public Order payOrder(@PathVariable Long id) {
