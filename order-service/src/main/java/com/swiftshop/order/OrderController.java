@@ -26,6 +26,15 @@ public class OrderController {
         return orderRepository.save(order);
     }
 
+    // GET /api/orders/{id}
+    @GetMapping("/{id}")
+    public Order getOrderById(@PathVariable Long id) {
+        return orderRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Order not found"
+                ));
+    }
+
     // GET /api/orders/user/{userId}
     @GetMapping("/user/{userId}")
     public List<Order> getOrdersByUser(@PathVariable Long userId) {
@@ -34,14 +43,13 @@ public class OrderController {
 
     // PUT /api/orders/{id}/pay
     @PutMapping("/{id}/pay")
-public Order payOrder(@PathVariable Long id) {
-    Order order = orderRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(
-                    HttpStatus.NOT_FOUND, "Order not found"
-            ));
+    public Order payOrder(@PathVariable Long id) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Order not found"
+                ));
 
-    order.setStatus(OrderStatus.PAID);
-    return orderRepository.save(order);
-}
-
+        order.setStatus(OrderStatus.PAID);
+        return orderRepository.save(order);
+    }
 }
