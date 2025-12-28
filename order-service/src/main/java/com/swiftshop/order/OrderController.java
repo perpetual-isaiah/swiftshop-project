@@ -1,31 +1,30 @@
 package com.swiftshop.order;
 
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.http.ResponseEntity;
+import com.swiftshop.order.model.Order;
+import com.swiftshop.order.repository.OrderRepository;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/orders")
 public class OrderController {
 
-    public OrderController() {
-        System.out.println("========================================");
-        System.out.println("OrderController has been created!");
-        System.out.println("========================================");
+    private final OrderRepository orderRepository;
+
+    public OrderController(OrderRepository orderRepository) {
+        this.orderRepository = orderRepository;
     }
 
-    // GET /api/orders
-    @GetMapping
-    public ResponseEntity<String> home() {
-        System.out.println("Home endpoint called!");
-        return ResponseEntity.ok("Order Service is running!");
+    // POST /api/orders
+    @PostMapping
+    public Order createOrder(@RequestBody Order order) {
+        return orderRepository.save(order);
     }
 
-    // GET /api/orders/health
-    @GetMapping("/health")
-    public ResponseEntity<String> health() {
-        System.out.println("Health endpoint called!");
-        return ResponseEntity.ok("Order Service is healthy!");
+    // GET /api/orders/user/{userId}
+    @GetMapping("/user/{userId}")
+    public List<Order> getOrdersByUser(@PathVariable Long userId) {
+        return orderRepository.findByUserId(userId);
     }
 }
