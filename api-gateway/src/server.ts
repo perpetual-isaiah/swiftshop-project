@@ -10,8 +10,8 @@ app.use(express.json());
 
 // Service URLs
 const USER_SERVICE = "http://localhost:3001";
-const PRODUCT_SERVICE = "http://localhost:5000";
-const ORDER_SERVICE = "http://localhost:8082"; // Updated to actual port
+const PRODUCT_SERVICE = "http://localhost:5001"; // ✅ Product Service port
+const ORDER_SERVICE = "http://localhost:8082";   // Updated to actual port
 
 // Health check
 app.get("/", (req, res) => {
@@ -123,7 +123,7 @@ app.post("/orders", async (req, res) => {
     });
     res.status(response.status).json(response.data);
   } catch (error: any) {
-    if (error.code === 'ECONNREFUSED') {
+    if (error.code === "ECONNREFUSED") {
       return res.status(503).json({
         success: false,
         message: "Order Service is not running. Please start it on port 8082"
@@ -143,7 +143,7 @@ app.get("/orders/:id", async (req, res) => {
     });
     res.json(response.data);
   } catch (error: any) {
-    if (error.code === 'ECONNREFUSED') {
+    if (error.code === "ECONNREFUSED") {
       return res.status(503).json({
         success: false,
         message: "Order Service is not running. Please start it on port 8082"
@@ -163,7 +163,7 @@ app.get("/orders/user/:userId", async (req, res) => {
     });
     res.json(response.data);
   } catch (error: any) {
-    if (error.code === 'ECONNREFUSED') {
+    if (error.code === "ECONNREFUSED") {
       return res.status(503).json({
         success: false,
         message: "Order Service is not running. Please start it on port 8082"
@@ -183,7 +183,7 @@ app.put("/orders/:id/pay", async (req, res) => {
     });
     res.json(response.data);
   } catch (error: any) {
-    if (error.code === 'ECONNREFUSED') {
+    if (error.code === "ECONNREFUSED") {
       return res.status(503).json({
         success: false,
         message: "Order Service is not running. Please start it on port 8082"
@@ -196,14 +196,79 @@ app.put("/orders/:id/pay", async (req, res) => {
 });
 
 // ==========================================
-// PRODUCT SERVICE ROUTES (Still waiting...)
+// PRODUCT SERVICE ROUTES - NOW ACTIVE ✅
 // ==========================================
 
-app.all("/products*", async (req, res) => {
-  res.status(503).json({
-    success: false,
-    message: "Product Service not yet implemented - waiting on Person 2"
-  });
+// Create product
+app.post("/products", async (req, res) => {
+  try {
+    const response = await axios.post(`${PRODUCT_SERVICE}/api/products/`, req.body);
+    res.status(response.status).json(response.data);
+  } catch (error: any) {
+    if (error.code === "ECONNREFUSED") {
+      return res.status(503).json({
+        success: false,
+        message: "Product Service is not running on port 5001"
+      });
+    }
+    res.status(error.response?.status || 500).json(
+      error.response?.data || { success: false, error: "Product Service error" }
+    );
+  }
+});
+
+// Get all products
+app.get("/products", async (req, res) => {
+  try {
+    const response = await axios.get(`${PRODUCT_SERVICE}/api/products/`);
+    res.json(response.data);
+  } catch (error: any) {
+    if (error.code === "ECONNREFUSED") {
+      return res.status(503).json({
+        success: false,
+        message: "Product Service is not running on port 5001"
+      });
+    }
+    res.status(error.response?.status || 500).json(
+      error.response?.data || { success: false, error: "Product Service error" }
+    );
+  }
+});
+
+// Get product by ID
+app.get("/products/:id", async (req, res) => {
+  try {
+    const response = await axios.get(`${PRODUCT_SERVICE}/api/products/${req.params.id}`);
+    res.json(response.data);
+  } catch (error: any) {
+    res.status(error.response?.status || 500).json(
+      error.response?.data || { success: false, error: "Product Service error" }
+    );
+  }
+});
+
+// Update product
+app.put("/products/:id", async (req, res) => {
+  try {
+    const response = await axios.put(`${PRODUCT_SERVICE}/api/products/${req.params.id}`, req.body);
+    res.json(response.data);
+  } catch (error: any) {
+    res.status(error.response?.status || 500).json(
+      error.response?.data || { success: false, error: "Product Service error" }
+    );
+  }
+});
+
+// Delete product
+app.delete("/products/:id", async (req, res) => {
+  try {
+    await axios.delete(`${PRODUCT_SERVICE}/api/products/${req.params.id}`);
+    res.status(204).send();
+  } catch (error: any) {
+    res.status(error.response?.status || 500).json(
+      error.response?.data || { success: false, error: "Product Service error" }
+    );
+  }
 });
 
 // ==========================================
@@ -242,7 +307,7 @@ app.listen(PORT, () => {
   console.log("🚀 ========================================");
   console.log(`✅ User Service: ${USER_SERVICE}`);
   console.log(`✅ Order Service: ${ORDER_SERVICE}`);
-  console.log(`❌ Product Service: ${PRODUCT_SERVICE} (pending)`);
+  console.log(`✅ Product Service: ${PRODUCT_SERVICE}`);
   console.log("🚀 ========================================");
   console.log("");
   console.log("📋 Available Routes:");
@@ -256,7 +321,11 @@ app.listen(PORT, () => {
   console.log("  GET    /orders/:id");
   console.log("  GET    /orders/user/:userId");
   console.log("  PUT    /orders/:id/pay");
-  console.log("  *      /products* (503 - Not Implemented)");
+  console.log("  POST   /products");
+  console.log("  GET    /products");
+  console.log("  GET    /products/:id");
+  console.log("  PUT    /products/:id");
+  console.log("  DELETE /products/:id");
   console.log("🚀 ========================================");
   console.log("");
 });

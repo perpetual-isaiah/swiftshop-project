@@ -1,0 +1,16 @@
+services:
+  postgres-products:
+    image: postgres:16
+    container_name: swiftshop_postgres_products
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: swiftshop_products
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_products_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_products_data:
+
