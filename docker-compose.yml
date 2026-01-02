@@ -1,16 +1,112 @@
 services:
-  postgres-products:
-    image: postgres:16
-    container_name: swiftshop_postgres_products
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: swiftshop_products
+  # MongoDB (User Service)
+  mongodb:
+    image: mongo:latest
+    container_name: swiftshop-mongodb
     ports:
-      - "5432:5432"
+      - "27017:27017"
     volumes:
-      - postgres_products_data:/var/lib/postgresql/data
+      - mongodb_data:/data/db
+    networks:
+      - swiftshop-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # User Service (Node.js / Express)
+  user-service:
+    build:
+      context: ./user-service
+    container_name: swiftshop-user-service
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      MONGODB_URI: mongodb://mongodb:27017/swiftshop
+      JWT_SECRET: your-secret-key-change-in-production
+      JWT_EXPIRES_IN: 7d
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - swiftshop-network
+    restart: unless-stopped
+
+  # Product Service (Python / FastAPI)
+  product-service:
+    build:
+      context: ./product-service
+    container_name: swiftshop-product-service
+    ports:
+      - "5001:5001"
+    environment:
+      DATABASE_URL: sqlite:///./data/swiftshop.db
+    volumes:
+      - product_data:/app/data
+    networks:
+      - swiftshop-network
+    restart: unless-stopped
+
+  # Order Service (Java / Spring Boot)
+  order-service:
+    build:
+      context: ./order-service
+    container_name: swiftshop-order-service
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:h2:mem:ordersdb
+      SPRING_DATASOURCE_USERNAME: sa
+      SPRING_DATASOURCE_PASSWORD: ""
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SERVER_PORT: 8082
+    networks:
+      - swiftshop-network
+    restart: unless-stopped
+
+  # API Gateway (Node.js / TypeScript)
+  api-gateway:
+    build:
+      context: ./api-gateway
+    container_name: swiftshop-api-gateway
+    ports:
+      - "8000:8000"
+    environment:
+      PORT: 8000
+      USER_SERVICE_URL: http://user-service:3001
+      PRODUCT_SERVICE_URL: http://product-service:5001
+      ORDER_SERVICE_URL: http://order-service:8082
+    depends_on:
+      - user-service
+      - product-service
+      - order-service
+    networks:
+      - swiftshop-network
+    restart: unless-stopped
+
+  # Frontend (React)
+  frontend:
+    build:
+      context: ./frontend
+    container_name: swiftshop-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      REACT_APP_API_URL: http://localhost:8000
+    depends_on:
+      - api-gateway
+    networks:
+      - swiftshop-network
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+
+networks:
+  swiftshop-network:
+    driver: bridge
 
 volumes:
-  postgres_products_data:
-
+  mongodb_data:
+  product_data:
