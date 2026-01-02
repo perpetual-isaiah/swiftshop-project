@@ -1,5 +1,12 @@
+from app.db.database import Base, engine
+from app.models.product import Product  # noqa
+from app.models.product_image import ProductImage  # noqa
+
+
 from fastapi import FastAPI
 from app.api.product_routes import router as product_router
+
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
