@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.models.product import Product
+from app.models.product_image import ProductImage
+from app.schemas.product_image_schema import ProductImageCreate, ProductImageOut
 from app.schemas.product_schema import ProductCreate, ProductOut
 
 router = APIRouter()
@@ -51,3 +53,48 @@ def delete_product(product_id: int, db: Session = Depends(get_db)):
     db.commit()
     return
 
+@router.get("/{product_id}/images", response_model=list[ProductImageOut])
+def list_product_images(product_id: int, db: Session = Depends(get_db)):
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    images = (
+        db.query(ProductImage)
+        .filter(ProductImage.product_id == product_id)
+        .order_by(ProductImage.is_primary.desc(), ProductImage.id.asc())
+        .all()
+    )
+    return images
+
+
+@router.post("/{product_id}/images", response_model=ProductImageOut)
+def add_product_image(product_id: int, payload: ProductImageCreate, db: Session = Depends(get_db)):
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    # If this new image is primary, unset existing primary
+    if payload.is_primary:
+        db.query(ProductImage).filter(ProductImage.product_id == product_id).update({"is_primary": False})
+
+    image = ProductImage(
+        product_id=product_id,
+        image_url=payload.image_url,
+        is_primary=bool(payload.is_primary),
+    )
+    db.add(image)
+    db.commit()
+    db.refresh(image)
+    return image
+
+
+@router.delete("/images/{image_id}", status_code=204)
+def delete_product_image(image_id: int, db: Session = Depends(get_db)):
+    image = db.query(ProductImage).filter(ProductImage.id == image_id).first()
+    if not image:
+        raise HTTPException(status_code=404, detail="Image not found")
+
+    db.delete(image)
+    db.commit()
+    return
