@@ -9,9 +9,9 @@ app.use(cors());
 app.use(express.json());
 
 // Service URLs
-const USER_SERVICE = "http://localhost:3001";
-const PRODUCT_SERVICE = "http://localhost:5001"; // ✅ Product Service port
-const ORDER_SERVICE = "http://localhost:8082";   // Updated to actual port
+const USER_SERVICE = process.env.USER_SERVICE_URL || "http://localhost:3001";
+const PRODUCT_SERVICE = process.env.PRODUCT_SERVICE_URL || "http://localhost:5001";
+const ORDER_SERVICE = process.env.ORDER_SERVICE_URL || "http://localhost:8082";
 
 // Health check
 app.get("/", (req, res) => {
