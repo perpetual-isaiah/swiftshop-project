@@ -272,6 +272,29 @@ app.delete("/products/:id", async (req, res) => {
   }
 });
 
+app.get("/products/:id/images", async (req, res) => {
+  try {
+    const response = await axios.get(`${PRODUCT_SERVICE}/api/products/${req.params.id}/images`);
+    res.json(response.data);
+  } catch (error: any) {
+    res.status(error.response?.status || 500).json(
+      error.response?.data || { success: false, error: "Product Service error" }
+    );
+  }
+});
+
+app.post("/products/:id/images", async (req, res) => {
+  try {
+    const response = await axios.post(`${PRODUCT_SERVICE}/api/products/${req.params.id}/images`, req.body);
+    res.status(response.status).json(response.data);
+  } catch (error: any) {
+    res.status(error.response?.status || 500).json(
+      error.response?.data || { success: false, error: "Product Service error" }
+    );
+  }
+});
+
+
 // ==========================================
 // ERROR HANDLING
 // ==========================================

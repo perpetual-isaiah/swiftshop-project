@@ -100,84 +100,12 @@ exports.loginUser = async (req, res) => {
   }
 };
 
-// ==========================================
-// GET CURRENT USER
-// ==========================================
-exports.getCurrentUser = async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id).select("-password");
-    
-    res.json({
-      success: true,
-      user
-    });
-  } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      error: err.message 
-    });
-  }
-};
-
-// ==========================================
-// UPDATE CURRENT USER
-// ==========================================
-exports.updateUser = async (req, res) => {
-  try {
-    const { name, email } = req.body;
-    
-    const user = await User.findByIdAndUpdate(
-      req.user.id,
-      { name, email },
-      { new: true, runValidators: true }
-    ).select("-password");
-
-    if (!user) {
-      return res.status(404).json({ 
-        success: false,
-        message: "User not found" 
-      });
-    }
-
-    res.json({ 
-      success: true,
-      message: "Profile updated successfully", 
-      user 
-    });
-  } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      error: err.message 
-    });
-  }
-};
-
-// ==========================================
-// LOGOUT
-// ==========================================
-exports.logout = async (req, res) => {
-  res.json({ 
-    success: true,
-    message: "Logged out successfully" 
-  });
-};
-
-// ==========================================
-// GET ALL USERS (Admin)
-// ==========================================
+// GET ALL USERS (TEST ROUTE)
 exports.getAllUsers = async (req, res) => {
   try {
     const users = await User.find().select("-password");
-    
-    res.json({
-      success: true,
-      count: users.length,
-      users
-    });
+    res.json(users);
   } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      error: err.message 
-    });
+    res.status(500).json({ error: err.message });
   }
 };
