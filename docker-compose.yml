@@ -1,5 +1,6 @@
+version: "3.9"
+
 services:
-  # MongoDB (User Service)
   mongodb:
     image: mongo:latest
     container_name: swiftshop-mongodb
@@ -15,7 +16,20 @@ services:
       timeout: 5s
       retries: 5
 
-  # User Service (Node.js / Express)
+  postgres:
+    image: postgres:15
+    container_name: swiftshop-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: swiftshop
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - swiftshop-network
+
   user-service:
     build:
       context: ./user-service
@@ -34,7 +48,6 @@ services:
       - swiftshop-network
     restart: unless-stopped
 
-  # Product Service (Python / FastAPI)
   product-service:
     build:
       context: ./product-service
@@ -42,14 +55,13 @@ services:
     ports:
       - "5001:5001"
     environment:
-      DATABASE_URL: sqlite:///./data/swiftshop.db
-    volumes:
-      - product_data:/app/data
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/swiftshop
+    depends_on:
+      - postgres
     networks:
       - swiftshop-network
     restart: unless-stopped
 
-  # Order Service (Java / Spring Boot)
   order-service:
     build:
       context: ./order-service
@@ -58,15 +70,12 @@ services:
       - "8082:8082"
     environment:
       SPRING_DATASOURCE_URL: jdbc:h2:mem:ordersdb
-      SPRING_DATASOURCE_USERNAME: sa
-      SPRING_DATASOURCE_PASSWORD: ""
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SERVER_PORT: 8082
     networks:
       - swiftshop-network
     restart: unless-stopped
 
-  # API Gateway (Node.js / TypeScript)
   api-gateway:
     build:
       context: ./api-gateway
@@ -86,7 +95,6 @@ services:
       - swiftshop-network
     restart: unless-stopped
 
-  # Frontend (React)
   frontend:
     build:
       context: ./frontend
@@ -109,4 +117,4 @@ networks:
 
 volumes:
   mongodb_data:
-  product_data:
+  postgres_data:

@@ -2,7 +2,11 @@ const mongoose = require("mongoose");
 
 const connectDB = async () => {
   try {
-    await mongoose.connect("mongodb://localhost:27017/swiftshop");
+    const mongoUri = process.env.MONGODB_URI;
+
+    console.log("Using Mongo URI:", mongoUri); // 🔍 debug line
+
+    await mongoose.connect(mongoUri);
     console.log("MongoDB connected to User Service");
   } catch (error) {
     console.error("MongoDB connection error:", error);
