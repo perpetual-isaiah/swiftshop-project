@@ -109,3 +109,35 @@ exports.getAllUsers = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// GET CURRENT USER
+exports.getCurrentUser = async (req, res) => {
+  try {
+    // auth middleware attaches req.user
+    return res.json({ success: true, user: req.user });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// UPDATE CURRENT USER
+exports.updateUser = async (req, res) => {
+  try {
+    const { name } = req.body;
+
+    const updated = await User.findByIdAndUpdate(
+      req.user._id,
+      { ...(name ? { name } : {}) },
+      { new: true }
+    ).select("-password");
+
+    return res.json({ success: true, user: updated });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// LOGOUT (JWT is stateless; frontend just deletes token)
+exports.logout = async (req, res) => {
+  return res.json({ success: true, message: "Logged out successfully" });
+};

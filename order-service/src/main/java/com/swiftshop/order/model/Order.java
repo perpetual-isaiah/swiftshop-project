@@ -11,7 +11,8 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long userId;
+    // ✅ Mongo-compatible user ID
+    private String userId;
 
     private Double totalAmount;
 
@@ -25,7 +26,7 @@ public class Order {
         this.status = OrderStatus.CREATED;
     }
 
-    public Order(Long userId, Double totalAmount) {
+    public Order(String userId, Double totalAmount) {
         this.userId = userId;
         this.totalAmount = totalAmount;
         this.createdAt = LocalDateTime.now();
@@ -36,7 +37,7 @@ public class Order {
         return id;
     }
 
-    public Long getUserId() {
+    public String getUserId() {
         return userId;
     }
 
@@ -52,7 +53,20 @@ public class Order {
         return createdAt;
     }
 
+    // ✅ setters (important for POST requests)
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public void setTotalAmount(Double totalAmount) {
+        this.totalAmount = totalAmount;
+    }
+
     public void setStatus(OrderStatus status) {
         this.status = status;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 }

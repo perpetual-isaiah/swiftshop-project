@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   mongodb:
     image: mongo:latest
@@ -29,6 +27,31 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - swiftshop-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  mysql-order:
+    image: mysql:8.0
+    container_name: swiftshop-mysql-order
+    environment:
+      MYSQL_DATABASE: swiftshop_orders
+      MYSQL_USER: swiftshop
+      MYSQL_PASSWORD: swiftshop
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_order_data:/var/lib/mysql
+    networks:
+      - swiftshop-network
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -proot --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   user-service:
     build:
@@ -57,24 +80,27 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/swiftshop
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     networks:
       - swiftshop-network
     restart: unless-stopped
 
   order-service:
-    build:
-      context: ./order-service
-    container_name: swiftshop-order-service
-    ports:
-      - "8082:8082"
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:h2:mem:ordersdb
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
-      SERVER_PORT: 8082
-    networks:
-      - swiftshop-network
-    restart: unless-stopped
+  build:
+    context: ./order-service
+  container_name: swiftshop-order-service
+  ports:
+    - "8082:8082"
+  environment:
+    SERVER_PORT: 8082
+    SPRING_DATASOURCE_URL: jdbc:mysql://mysql-order:3306/swiftshop_orders?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+    SPRING_DATASOURCE_USERNAME: swiftshop
+    SPRING_DATASOURCE_PASSWORD: swiftshop
+    SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.MySQLDialect
+    STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+
 
   api-gateway:
     build:
@@ -118,3 +144,4 @@ networks:
 volumes:
   mongodb_data:
   postgres_data:
+  mysql_order_data:

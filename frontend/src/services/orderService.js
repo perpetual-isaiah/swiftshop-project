@@ -1,30 +1,31 @@
+// src/services/orderService.js
 import api from './api';
 
-// Order APIs
 export const orderAPI = {
-  // Create a new order
   createOrder: async (orderData) => {
-    const response = await api.post('/orders', orderData);
-    return response.data;
+    const res = await api.post('/orders', orderData);
+    return res.data;
   },
 
-  // Get order by ID
-  getOrderById: async (orderId) => {
-    const response = await api.get(`/orders/${orderId}`);
-    return response.data;
+  getOrdersByUser: async (userId) => {
+    const res = await api.get(`/orders/user/${userId}`);
+    return res.data;
   },
 
-  // Get all orders for a user
-  getOrdersByUserId: async (userId) => {
-    const response = await api.get(`/orders/user/${userId}`);
-    return response.data;
+  getOrderById: async (id) => {
+    const res = await api.get(`/orders/${id}`);
+    return res.data;
   },
 
-  // Pay for an order
-  payOrder: async (orderId) => {
-    const response = await api.put(`/orders/${orderId}/pay`);
-    return response.data;
+  payOrder: async (id) => {
+    const res = await api.put(`/orders/${id}/pay`);
+    return res.data;
   },
+
+  getInvoice: async (id) => {
+    const res = await api.get(`/orders/${id}/invoice`);
+    return res.data;
+  }
 };
 
 export default orderAPI;
