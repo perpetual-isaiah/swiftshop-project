@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
+from typing import Optional
 
 from app.db.database import get_db
 from app.models.product import Product
@@ -18,8 +19,20 @@ def create_product(payload: ProductCreate, db: Session = Depends(get_db)):
     return product
 
 @router.get("/", response_model=list[ProductOut])
-def get_products(db: Session = Depends(get_db)):
-    return db.query(Product).all()
+def get_products(
+    category: Optional[str] = Query(None, description="Filter by category"),
+    db: Session = Depends(get_db)
+):
+    query = db.query(Product)
+    if category:
+        query = query.filter(Product.category == category)
+    return query.all()
+
+@router.get("/categories")
+def get_categories(db: Session = Depends(get_db)):
+    """Get list of all unique categories"""
+    categories = db.query(Product.category).distinct().filter(Product.category.isnot(None)).all()
+    return {"categories": [cat[0] for cat in categories]}
 
 @router.get("/{product_id}", response_model=ProductOut)
 def get_product(product_id: int, db: Session = Depends(get_db)):
@@ -38,6 +51,8 @@ def update_product(product_id: int, payload: ProductCreate, db: Session = Depend
     product.description = payload.description
     product.price = payload.price
     product.stock = payload.stock
+    product.category = payload.category
+    product.image_url = payload.image_url
 
     db.commit()
     db.refresh(product)

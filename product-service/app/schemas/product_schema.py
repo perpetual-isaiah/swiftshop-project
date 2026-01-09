@@ -6,6 +6,8 @@ class ProductBase(BaseModel):
     description: Optional[str] = None
     price: float
     stock: int = 0
+    category: Optional[str] = None
+    image_url: Optional[str] = None
 
 class ProductCreate(ProductBase):
     pass
@@ -15,3 +17,4 @@ class ProductOut(ProductBase):
 
     class Config:
         from_attributes = True
+

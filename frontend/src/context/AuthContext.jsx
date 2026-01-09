@@ -37,17 +37,18 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (email, password) => {
-    const data = await authAPI.login({ email, password });
-    setUser(data.user);
-    return data;
-  };
+  const login = async (email, password, recaptchaToken) => {
+  const data = await authAPI.login({ email, password, recaptchaToken });
+  setUser(data.user);
+  return data;
+};
 
-  const register = async (name, email, password) => {
-    const data = await authAPI.register({ name, email, password });
-    setUser(data.user);
-    return data;
-  };
+const register = async (name, email, password, recaptchaToken) => {
+  const data = await authAPI.register({ name, email, password, recaptchaToken });
+  setUser(data.user);
+  return data;
+};
+
 
   const logout = async () => {
     await authAPI.logout();

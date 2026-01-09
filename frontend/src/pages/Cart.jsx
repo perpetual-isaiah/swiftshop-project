@@ -1,39 +1,52 @@
-import React, { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import axios from "axios";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
+import orderAPI from "../services/orderService";
 
 const Cart = () => {
-  const { cartItems, cartTotal, cartCount, updateQuantity, removeFromCart, clearCart } = useCart();
-  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  const {
+    cartItems,
+    cartTotal,
+    cartCount,
+    updateQuantity,
+    removeFromCart,
+    clearCart,
+  } = useCart();
+
+  const { user, isAuthenticated } = useAuth();
 
   const [checkingOut, setCheckingOut] = useState(false);
   const [error, setError] = useState("");
 
-  // Use your env if you have it, otherwise fallback to localhost gateway
-  const API_BASE =
-    process.env.REACT_APP_API_URL?.replace(/\/$/, "") || "http://localhost:8000";
-
-  // Change this if your gateway uses a different path
-  const CHECKOUT_ENDPOINT = "/checkout/create-session";
-
   const lineItems = useMemo(() => {
-    // Keep it simple + Stripe-friendly
-    return cartItems.map((item) => ({
-      id: item.id,
-      name: item.name,
-      price: Number(item.price), // numeric
-      quantity: Number(item.quantity),
-      image: item.image || null,
-    }));
-  }, [cartItems]);
+  console.log("🛒 Cart items:", cartItems); // 🔍 Debug
+  
+  return cartItems.map((item) => {
+    const productName =
+      item?.name || item?.productName || item?.title || "Unknown Product";
 
+    const lineItem = {
+      productId: Number(item?.id ?? 0),
+      productName,
+      unitPrice: Number(item?.price ?? 0),
+      quantity: Number(item?.quantity ?? 1),
+    };
+    
+    console.log("📦 Line item:", lineItem); // 🔍 Debug
+    
+    return lineItem;
+  });
+}, [cartItems]);
   const handleCheckout = async () => {
     try {
       setError("");
 
-      if (!isAuthenticated) {
+      const userId = user?.id || user?._id;
+
+      if (!isAuthenticated || !userId) {
         setError("Please login first to proceed to checkout.");
         return;
       }
@@ -43,49 +56,47 @@ const Cart = () => {
         return;
       }
 
-      setCheckingOut(true);
-
-      // For Stripe redirect URLs
-      // Stripe needs absolute URLs; this is your frontend origin
-      const origin = window.location.origin;
-
-      const response = await axios.post(
-        `${API_BASE}${CHECKOUT_ENDPOINT}`,
-        {
-          items: lineItems,
-          // optional, but super useful on backend:
-          totalAmount: Number(cartTotal.toFixed(2)),
-          currency: "usd",
-          successUrl: `${origin}/orders?success=1`,
-          cancelUrl: `${origin}/cart?canceled=1`,
-        },
-        {
-          headers: {
-            // if you protect gateway endpoints
-            Authorization: localStorage.getItem("token")
-              ? `Bearer ${localStorage.getItem("token")}`
-              : undefined,
-          },
-        }
-      );
-
-      const url = response.data?.url;
-
-      if (!url) {
-        setError("Checkout session created but no redirect URL was returned.");
-        setCheckingOut(false);
+      // Extra guard before calling backend
+      const badItem = lineItems.find((x) => !x.productName || x.productName === "Unknown Product");
+      if (badItem) {
+        setError("One product in your cart is missing a name. Please remove it and add again.");
         return;
       }
 
-      // Redirect to Stripe Checkout
-      window.location.href = url;
+      setCheckingOut(true);
+
+      // 1) Create order with all required fields ✅
+      const orderPayload = {
+        userId,
+        items: lineItems,
+        totalAmount: cartTotal,  // ✅ ADDED: Include total amount
+      };
+
+      console.log("📦 Creating order:", orderPayload); // 🔍 Debug log
+
+      const order = await orderAPI.createOrder(orderPayload);
+
+      console.log("✅ Order created:", order); // 🔍 Debug log
+      console.log("📋 Items in order:", order.items); // 🔍 Debug log
+
+      if (!order?.id) {
+        throw new Error("Order was created but no ID was returned.");
+      }
+
+      // 2) Clear cart after successful order creation ✅
+      clearCart();
+
+      // 3) Navigate to orders (Pay Now triggers Stripe)
+      navigate("/orders");
     } catch (err) {
-      console.error("Checkout error:", err);
+      console.error("❌ Checkout error:", err);
       setError(
         err?.response?.data?.message ||
           err?.response?.data?.error ||
-          "Failed to start checkout. Check your gateway Stripe endpoint."
+          err?.message ||
+          "Failed to create order."
       );
+    } finally {
       setCheckingOut(false);
     }
   };
@@ -103,7 +114,11 @@ const Cart = () => {
           <h3>Nothing here yet</h3>
           <p>Add products to your cart to see them here.</p>
 
-          <Link to="/products" className="btn btn-primary" style={{ marginTop: "1.5rem" }}>
+          <Link
+            to="/products"
+            className="btn btn-primary"
+            style={{ marginTop: "1.5rem" }}
+          >
             Browse Products
           </Link>
         </div>
@@ -167,7 +182,9 @@ const Cart = () => {
 
               {/* Details */}
               <div>
-                <div style={{ fontWeight: 800, color: "#2c3e50" }}>{item.name}</div>
+                <div style={{ fontWeight: 800, color: "#2c3e50" }}>
+                  {item.name || item.productName || item.title || "Unknown Product"}
+                </div>
                 <div style={{ color: "#7f8c8d", marginTop: "0.2rem" }}>
                   ${Number(item.price).toFixed(2)} each
                 </div>
@@ -176,7 +193,6 @@ const Cart = () => {
                 <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.75rem" }}>
                   <button
                     className="btn btn-secondary"
-                    style={{ padding: "0.45rem 1rem" }}
                     onClick={() =>
                       updateQuantity(item.id, Math.max(1, Number(item.quantity) - 1))
                     }
@@ -193,20 +209,11 @@ const Cart = () => {
                     }}
                     type="number"
                     min="1"
-                    style={{
-                      width: "70px",
-                      padding: "0.55rem 0.7rem",
-                      borderRadius: "12px",
-                      border: "2px solid #e0e0e0",
-                      fontWeight: 700,
-                      textAlign: "center",
-                    }}
                     disabled={checkingOut}
                   />
 
                   <button
                     className="btn btn-secondary"
-                    style={{ padding: "0.45rem 1rem" }}
                     onClick={() => updateQuantity(item.id, Number(item.quantity) + 1)}
                     disabled={checkingOut}
                   >
@@ -217,13 +224,12 @@ const Cart = () => {
 
               {/* Right side */}
               <div style={{ textAlign: "right" }}>
-                <div style={{ fontWeight: 900, fontSize: "1.1rem", color: "#2c3e50" }}>
+                <div style={{ fontWeight: 900 }}>
                   ${(Number(item.price) * Number(item.quantity)).toFixed(2)}
                 </div>
 
                 <button
                   className="btn btn-danger"
-                  style={{ padding: "0.55rem 1rem", marginTop: "0.7rem" }}
                   onClick={() => removeFromCart(item.id)}
                   disabled={checkingOut}
                 >
@@ -243,8 +249,8 @@ const Cart = () => {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            gap: "1rem",
             flexWrap: "wrap",
+            gap: "1rem",
           }}
         >
           <button className="btn btn-secondary" onClick={clearCart} disabled={checkingOut}>
@@ -252,41 +258,22 @@ const Cart = () => {
           </button>
 
           <div style={{ textAlign: "right" }}>
-            <div style={{ color: "#7f8c8d", fontWeight: 700 }}>Total</div>
-            <div style={{ fontSize: "2rem", fontWeight: 900, color: "#2c3e50" }}>
+            <div>Total</div>
+            <div style={{ fontSize: "2rem", fontWeight: 900 }}>
               ${cartTotal.toFixed(2)}
             </div>
           </div>
 
-          <button
-            className="btn btn-success"
-            style={{ width: "260px", opacity: checkingOut ? 0.7 : 1 }}
-            onClick={handleCheckout}
-            disabled={checkingOut}
-          >
-            {checkingOut ? "Redirecting..." : "Proceed to Checkout"}
+          <button className="btn btn-success" onClick={handleCheckout} disabled={checkingOut}>
+            {checkingOut ? "Creating order..." : "Proceed to Checkout"}
           </button>
         </div>
       </div>
 
-      <div className="card" style={{ background: "rgba(255,255,255,0.92)" }}>
-        <div style={{ display: "flex", alignItems: "start", gap: "1rem" }}>
-          <div style={{ fontSize: "2rem" }}>🔒</div>
-          <div>
-            <h3 style={{ color: "#2c3e50", marginBottom: "0.5rem" }}>Stripe Checkout</h3>
-            <p style={{ color: "#7f8c8d", marginBottom: "0.8rem" }}>
-              Clicking “Proceed to Checkout” will create a Stripe Checkout Session through the API Gateway and redirect you to Stripe.
-            </p>
-            <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-              <Link to="/products" className="btn btn-secondary">
-                Continue Shopping
-              </Link>
-              <Link to="/orders" className="btn btn-primary">
-                Go to Orders
-              </Link>
-            </div>
-          </div>
-        </div>
+      <div className="card">
+        <Link to="/orders" className="btn btn-primary">
+          Go to Orders
+        </Link>
       </div>
     </div>
   );

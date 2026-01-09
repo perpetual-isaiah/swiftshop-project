@@ -1,11 +1,16 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import React, { useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import ReCAPTCHA from "react-google-recaptcha";
+import { useAuth } from "../context/AuthContext";
+
+const SITE_KEY = process.env.REACT_APP_RECAPTCHA_SITE_KEY;
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const captchaRef = useRef(null);
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const { login } = useAuth();
@@ -13,71 +18,106 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
+    const recaptchaToken = captchaRef.current?.getValue();
+    if (!recaptchaToken) {
+      setError("Please complete the reCAPTCHA.");
+      setLoading(false);
+      return;
+    }
+
     try {
-      await login(email, password);
-      navigate('/dashboard');
+      await login(email, password, recaptchaToken);
+      captchaRef.current?.reset();
+      navigate("/dashboard");
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please try again.');
+      captchaRef.current?.reset();
+      setError(err.response?.data?.message || "Login failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ maxWidth: '400px', margin: '2rem auto' }}>
-      <div className="card">
-        <div className="card-header">
-          <h2>Login</h2>
-          <p>Welcome back! Please login to your account.</p>
+    <div className="auth-layout">
+      <div className="auth-left">
+        <h1>
+          <span style={{ color: "#ffc107" }}>Swift</span>Shop
+        </h1>
+        <p>
+          Welcome back. Sign in to manage your cart, track your orders, and get
+          the latest deals on electronics and gadgets.
+        </p>
+
+        <div className="auth-badges">
+          <span className="auth-badge">Fast checkout</span>
+          <span className="auth-badge">Secure payments</span>
+          <span className="auth-badge">Order tracking</span>
+        </div>
+      </div>
+
+      <div className="ui-card">
+        <div className="ui-card-header">
+          <div>
+            <h2>🔐 Login</h2>
+            <p className="ui-muted">Enter your details to continue.</p>
+          </div>
         </div>
 
-        {error && (
-          <div className="alert alert-error">
-            {error}
-          </div>
-        )}
+        {error && <div className="ui-alert error">❌ {error}</div>}
 
-        <form onSubmit={handleSubmit} className="form">
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              placeholder="your@email.com"
-              disabled={loading}
-            />
-          </div>
+        <div className="ui-card-body">
+          <form onSubmit={handleSubmit} className="ui-form">
+            <div className="ui-field">
+              <label>Email</label>
+              <input
+                className="ui-input"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your@email.com"
+                disabled={loading}
+                required
+              />
+            </div>
 
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="Enter your password"
-              disabled={loading}
-            />
-          </div>
+            <div className="ui-field">
+              <label>Password</label>
+              <input
+                className="ui-input"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                disabled={loading}
+                required
+              />
+            </div>
 
-          <button type="submit" className="btn btn-success" disabled={loading}>
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-        </form>
+            {/* ✅ reCAPTCHA */}
+            <div className="ui-field" style={{ marginTop: 12 }}>
+              <ReCAPTCHA ref={captchaRef} sitekey={SITE_KEY} />
+            </div>
 
-        <p style={{ marginTop: '1.5rem', textAlign: 'center', color: '#7f8c8d' }}>
-          Don't have an account?{' '}
-          <Link to="/register" style={{ color: '#3498db', textDecoration: 'none', fontWeight: '600' }}>
-            Register here
-          </Link>
-        </p>
+            <div className="ui-actions">
+              <button className="ui-btn primary" type="submit" disabled={loading}>
+                {loading ? "⏳ Logging in..." : "Login"}
+              </button>
+              <Link className="ui-btn secondary" to="/register">
+                Create account
+              </Link>
+            </div>
+
+            <p className="ui-center ui-muted" style={{ marginTop: 8 }}>
+              Don’t have an account?{" "}
+              <Link className="ui-link" to="/register">
+                Register here
+              </Link>
+            </p>
+          </form>
+        </div>
       </div>
     </div>
   );

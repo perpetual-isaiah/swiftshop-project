@@ -1,479 +1,368 @@
-import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
+import React, { useEffect, useMemo, useState } from "react";
+import { useAuth } from "../context/AuthContext";
+import axios from "axios";
 
 const Dashboard = () => {
   const { user, updateUser } = useAuth();
+
   const [isEditing, setIsEditing] = useState(false);
-  const [name, setName] = useState(user?.name || '');
-  const [email, setEmail] = useState(user?.email || '');
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [name, setName] = useState(user?.name || "");
+  const [email, setEmail] = useState(user?.email || "");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+
+  const API_BASE_URL = "http://localhost:8000";
+
+  const extractOrdersArray = (payload) => {
+    if (Array.isArray(payload)) return payload;
+    if (payload && Array.isArray(payload.orders)) return payload.orders;
+    if (payload && Array.isArray(payload.data)) return payload.data;
+    if (payload?.data && Array.isArray(payload.data.orders)) return payload.data.orders;
+    return [];
+  };
+
+  const toNumber = (v) => {
+    const n = typeof v === "string" ? parseFloat(v) : Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const normalizeOrder = (o) => {
+    const total =
+      o?.totalAmount ??
+      o?.total_amount ??
+      o?.total ??
+      o?.totalPrice ??
+      o?.total_price ??
+      0;
+
+    const created =
+      o?.createdAt ??
+      o?.created_at ??
+      o?.createdOn ??
+      o?.dateCreated ??
+      o?.created_date ??
+      null;
+
+    return {
+      id: o?.id ?? o?.orderId ?? o?._id,
+      status: (o?.status ?? o?.paymentStatus ?? "UNKNOWN").toString(),
+      createdAt: created ? new Date(created).toISOString() : null,
+      totalAmount: toNumber(total),
+      items: Array.isArray(o?.items) ? o.items : (Array.isArray(o?.orderItems) ? o.orderItems : []),
+      raw: o,
+    };
+  };
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      const userId = user?.id || user?._id;
+      if (!userId) return;
+
+      try {
+        setOrdersLoading(true);
+        const token = localStorage.getItem("token");
+
+        // If your gateway does NOT require auth for this route, you can remove headers safely.
+        const res = await axios.get(`${API_BASE_URL}/orders/user/${userId}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+
+        const arr = extractOrdersArray(res.data);
+        const normalized = arr.map(normalizeOrder);
+
+        // Sort newest first so "Recent orders" is correct
+        normalized.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+        setOrders(normalized);
+      } catch (err) {
+        console.error("Failed to fetch orders:", err?.response?.data || err);
+        setOrders([]);
+      } finally {
+        setOrdersLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, [user]);
+
+  const totalOrders = orders.length;
+
+  const totalSpent = useMemo(() => {
+    const paidStatuses = new Set(["PAID", "COMPLETED", "SUCCESS"]);
+    return orders.reduce((sum, o) => {
+      const isPaid = paidStatuses.has((o.status || "").toUpperCase());
+      return sum + (isPaid ? (o.totalAmount || 0) : 0);
+    }, 0);
+  }, [orders]);
+
+  // Use latest 4 orders (not just first 4 from backend)
+  const recentOrders = useMemo(() => orders.slice(0, 4), [orders]);
+
+  // "Recent items" KPI — count items from the recentOrders list
+  const recentItemsCount = useMemo(() => {
+    return recentOrders.reduce((count, o) => count + (Array.isArray(o.items) ? o.items.length : 0), 0);
+  }, [recentOrders]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setMessage('');
-    setLoading(true);
+    setError("");
+    setMessage("");
+    setSaving(true);
 
     try {
       await updateUser({ name, email });
-      setMessage('Profile updated successfully!');
+      setMessage("Profile updated successfully!");
       setIsEditing(false);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update profile');
+      setError(err.response?.data?.message || "Failed to update profile");
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
   const handleCancel = () => {
-    setName(user?.name || '');
-    setEmail(user?.email || '');
+    setName(user?.name || "");
+    setEmail(user?.email || "");
     setIsEditing(false);
-    setError('');
-    setMessage('');
+    setError("");
+    setMessage("");
   };
 
   if (!user) {
     return (
-      <div className="loading">
-        <div className="loading-spinner"></div>
-        <p>Loading...</p>
+      <div className="ui-page">
+        <div className="ui-loading">
+          <div className="ui-spinner" />
+          <div style={{ color: "var(--muted)", fontWeight: 700 }}>Loading…</div>
+        </div>
       </div>
     );
   }
 
-  // Calculate days since account creation
+  const firstLetter = (user?.name || "U").trim().charAt(0).toUpperCase();
   const daysSinceJoined = Math.floor(
     (new Date() - new Date(user.createdAt)) / (1000 * 60 * 60 * 24)
   );
 
   return (
-    <div>
-      {/* Welcome Banner */}
-      <div className="card" style={{ 
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        color: 'white',
-        marginBottom: '2rem'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          <div>
-            <h1 style={{ margin: 0, marginBottom: '0.5rem', fontSize: '2.5rem' }}>
-              Welcome back, {user.name}! 👋
-            </h1>
-            <p style={{ margin: 0, opacity: 0.9, fontSize: '1.1rem' }}>
-              Here's what's happening with your account today
-            </p>
+    <div className="ui-page">
+      <div className="ui-header">
+        <div>
+          <h1 className="ui-title">Dashboard</h1>
+          <p className="ui-subtitle">A quick snapshot of your account and orders.</p>
+        </div>
+
+        <div className="ui-toolbar">
+          <button
+            className="ui-btn ui-btn-soft"
+            onClick={() => (window.location.href = "/products")}
+            type="button"
+          >
+            Browse products
+          </button>
+          <button
+            className="ui-btn ui-btn-primary"
+            onClick={() => (window.location.href = "/orders")}
+            type="button"
+          >
+            View orders
+          </button>
+        </div>
+      </div>
+
+      <div className="ui-hero">
+        <div className="ui-hero-row">
+          <div className="ui-hero-left">
+            <div className="ui-avatar">{firstLetter}</div>
+            <div>
+              <div className="ui-hero-name">Welcome back, {user.name}</div>
+              <div className="ui-hero-email">{user.email}</div>
+              <div className="ui-pill-row">
+                <span className="ui-pill primary">
+                  {user.role === "admin" ? "Admin" : "Customer"}
+                </span>
+                <span className="ui-pill success">{daysSinceJoined} days member</span>
+              </div>
+            </div>
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '0.9rem', opacity: 0.8 }}>Member for</div>
-            <div style={{ fontSize: '2rem', fontWeight: '800' }}>
-              {daysSinceJoined} {daysSinceJoined === 1 ? 'day' : 'days'}
+
+          <div className="ui-toolbar">
+            <span className="ui-pill">Services: OK</span>
+          </div>
+        </div>
+
+        <div className="ui-stats">
+          <div className="ui-stat">
+            <div className="ui-stat-ic">🛒</div>
+            <div>
+              <p className="ui-stat-kpi">{ordersLoading ? "…" : totalOrders}</p>
+              <p className="ui-stat-lbl">Orders placed</p>
+            </div>
+          </div>
+
+          <div className="ui-stat">
+            <div className="ui-stat-ic">💳</div>
+            <div>
+              <p className="ui-stat-kpi">{ordersLoading ? "…" : `$${totalSpent.toFixed(2)}`}</p>
+              <p className="ui-stat-lbl">Total spent</p>
+            </div>
+          </div>
+
+          <div className="ui-stat">
+            <div className="ui-stat-ic">✨</div>
+            <div>
+              <p className="ui-stat-kpi">Active</p>
+              <p className="ui-stat-lbl">Account status</p>
+            </div>
+          </div>
+
+          <div className="ui-stat">
+            <div className="ui-stat-ic">📦</div>
+            <div>
+              <p className="ui-stat-kpi">{ordersLoading ? "…" : recentItemsCount}</p>
+              <p className="ui-stat-lbl">Recent items</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Quick Stats Dashboard */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-        gap: '1.5rem',
-        marginBottom: '2rem'
-      }}>
-        {/* Profile Completion */}
-        <div className="card" style={{ textAlign: 'center', padding: '2rem 1.5rem' }}>
-          <div style={{ 
-            width: '80px', 
-            height: '80px', 
-            margin: '0 auto 1rem',
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '2.5rem',
-            boxShadow: '0 10px 30px rgba(102, 126, 234, 0.3)'
-          }}>
-            👤
-          </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: '800', color: '#2c3e50', marginBottom: '0.3rem' }}>
-            100%
-          </div>
-          <div style={{ color: '#7f8c8d', fontSize: '0.9rem', fontWeight: '600' }}>
-            Profile Complete
-          </div>
-        </div>
+      <div className="ui-grid">
+        {/* Profile quick edit */}
+        <div className="ui-card ui-card-lg">
+          <div className="ui-header" style={{ marginBottom: 10 }}>
+            <div>
+              <h2 className="ui-title" style={{ fontSize: 18, margin: 0 }}>Profile</h2>
+              <p className="ui-subtitle">Edit your details quickly.</p>
+            </div>
 
-        {/* Orders */}
-        <div className="card" style={{ textAlign: 'center', padding: '2rem 1.5rem' }}>
-          <div style={{ 
-            width: '80px', 
-            height: '80px', 
-            margin: '0 auto 1rem',
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '2.5rem',
-            boxShadow: '0 10px 30px rgba(17, 153, 142, 0.3)'
-          }}>
-            🛒
-          </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: '800', color: '#2c3e50', marginBottom: '0.3rem' }}>
-            0
-          </div>
-          <div style={{ color: '#7f8c8d', fontSize: '0.9rem', fontWeight: '600' }}>
-            Orders Placed
-          </div>
-        </div>
-
-        {/* Total Spent */}
-        <div className="card" style={{ textAlign: 'center', padding: '2rem 1.5rem' }}>
-          <div style={{ 
-            width: '80px', 
-            height: '80px', 
-            margin: '0 auto 1rem',
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '2.5rem',
-            boxShadow: '0 10px 30px rgba(240, 147, 251, 0.3)'
-          }}>
-            💰
-          </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: '800', color: '#2c3e50', marginBottom: '0.3rem' }}>
-            $0.00
-          </div>
-          <div style={{ color: '#7f8c8d', fontSize: '0.9rem', fontWeight: '600' }}>
-            Total Spent
-          </div>
-        </div>
-
-        {/* Account Status */}
-        <div className="card" style={{ textAlign: 'center', padding: '2rem 1.5rem' }}>
-          <div style={{ 
-            width: '80px', 
-            height: '80px', 
-            margin: '0 auto 1rem',
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '2.5rem',
-            boxShadow: '0 10px 30px rgba(250, 112, 154, 0.3)'
-          }}>
-            ✨
-          </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: '800', color: '#2c3e50', marginBottom: '0.3rem' }}>
-            Active
-          </div>
-          <div style={{ color: '#7f8c8d', fontSize: '0.9rem', fontWeight: '600' }}>
-            Account Status
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content Grid */}
-      <div className="dashboard-grid">
-        {/* Profile Card */}
-        <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-            <h3 style={{ margin: 0, fontSize: '1.5rem', color: '#2c3e50' }}>
-              📋 Profile Information
-            </h3>
-            {!isEditing && (
-              <button
-                onClick={() => setIsEditing(true)}
-                style={{
-                  background: 'none',
-                  border: '2px solid #667eea',
-                  color: '#667eea',
-                  padding: '0.5rem 1rem',
-                  borderRadius: '20px',
-                  cursor: 'pointer',
-                  fontWeight: '600',
-                  transition: 'all 0.3s'
-                }}
-                onMouseOver={(e) => {
-                  e.target.style.background = '#667eea';
-                  e.target.style.color = 'white';
-                }}
-                onMouseOut={(e) => {
-                  e.target.style.background = 'none';
-                  e.target.style.color = '#667eea';
-                }}
-              >
-                ✏️ Edit
+            {!isEditing ? (
+              <button className="ui-btn ui-btn-soft" onClick={() => setIsEditing(true)} type="button">
+                Edit
+              </button>
+            ) : (
+              <button className="ui-btn" onClick={handleCancel} disabled={saving} type="button">
+                Cancel
               </button>
             )}
           </div>
 
-          {message && (
-            <div className="alert alert-success">
-              {message}
-            </div>
-          )}
+          {message && <div className="ui-alert success" style={{ marginBottom: 12 }}>{message}</div>}
+          {error && <div className="ui-alert error" style={{ marginBottom: 12 }}>{error}</div>}
 
-          {error && (
-            <div className="alert alert-error">
-              {error}
-            </div>
-          )}
-          
           {!isEditing ? (
-            <div>
-              <div className="info-item">
-                <span className="info-label">👤 Full Name</span>
-                <span className="info-value">{user.name}</span>
+            <div className="ui-list">
+              <div className="ui-item">
+                <div>
+                  <p className="ui-item-title">Full name</p>
+                  <p className="ui-item-sub">{user.name}</p>
+                </div>
               </div>
-              <div className="info-item">
-                <span className="info-label">📧 Email Address</span>
-                <span className="info-value">{user.email}</span>
+              <div className="ui-item">
+                <div>
+                  <p className="ui-item-title">Email</p>
+                  <p className="ui-item-sub">{user.email}</p>
+                </div>
               </div>
-              <div className="info-item">
-                <span className="info-label">🎭 Role</span>
-                <span className="info-value" style={{ 
-                  textTransform: 'capitalize',
-                  padding: '0.3rem 0.8rem',
-                  background: user.role === 'admin' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
-                  color: 'white',
-                  borderRadius: '15px',
-                  fontSize: '0.85rem',
-                  fontWeight: '700'
-                }}>
-                  {user.role}
-                </span>
-              </div>
-              <div className="info-item">
-                <span className="info-label">📅 Member Since</span>
-                <span className="info-value">
-                  {new Date(user.createdAt).toLocaleDateString('en-US', { 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
-                  })}
-                </span>
-              </div>
-              <div className="info-item">
-                <span className="info-label">🔄 Last Updated</span>
-                <span className="info-value">
-                  {new Date(user.updatedAt).toLocaleDateString('en-US', { 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
-                  })}
-                </span>
+              <div className="ui-item">
+                <div>
+                  <p className="ui-item-title">Role</p>
+                  <p className="ui-item-sub" style={{ textTransform: "capitalize" }}>{user.role}</p>
+                </div>
+                <span className="ui-badge">{user.role}</span>
               </div>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="form">
-              <div className="form-group">
-                <label htmlFor="name">Full Name</label>
+            <form className="ui-form" onSubmit={handleSubmit}>
+              <div className="ui-field">
+                <label>Full name</label>
                 <input
-                  type="text"
-                  id="name"
+                  className="ui-input"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  disabled={saving}
                   required
-                  disabled={loading}
-                  placeholder="Enter your full name"
                 />
               </div>
-
-              <div className="form-group">
-                <label htmlFor="email">Email Address</label>
+              <div className="ui-field">
+                <label>Email</label>
                 <input
                   type="email"
-                  id="email"
+                  className="ui-input"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  disabled={saving}
                   required
-                  disabled={loading}
-                  placeholder="Enter your email"
                 />
               </div>
-
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                <button
-                  type="submit"
-                  className="btn btn-success"
-                  disabled={loading}
-                  style={{ flex: 1 }}
-                >
-                  {loading ? '⏳ Saving...' : '✅ Save Changes'}
+              <div className="ui-row" style={{ marginTop: 6 }}>
+                <button className="ui-btn ui-btn-primary" disabled={saving} type="submit">
+                  {saving ? "Saving…" : "Save"}
                 </button>
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  className="btn btn-secondary"
-                  disabled={loading}
-                  style={{ flex: 1 }}
-                >
-                  ❌ Cancel
+                <button className="ui-btn" type="button" onClick={handleCancel} disabled={saving}>
+                  Cancel
                 </button>
               </div>
             </form>
           )}
         </div>
 
-        {/* Activity & Quick Actions */}
-        <div>
-          {/* Recent Activity */}
-          <div className="card" style={{ marginBottom: '1.5rem' }}>
-            <h3 style={{ marginBottom: '1.5rem', fontSize: '1.5rem', color: '#2c3e50' }}>
-              📊 Recent Activity
-            </h3>
-            <div style={{ 
-              padding: '2rem',
-              textAlign: 'center',
-              background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%)',
-              borderRadius: '12px'
-            }}>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }}>📈</div>
-              <p style={{ color: '#7f8c8d', marginBottom: '1rem' }}>No recent activity</p>
-              <p style={{ fontSize: '0.85rem', color: '#95a5a6' }}>
-                Start shopping to see your activity here!
-              </p>
+        {/* Recent orders */}
+        <div className="ui-card ui-card-lg">
+          <div className="ui-header" style={{ marginBottom: 10 }}>
+            <div>
+              <h2 className="ui-title" style={{ fontSize: 18, margin: 0 }}>Recent orders</h2>
+              <p className="ui-subtitle">Your latest activity.</p>
             </div>
           </div>
 
-          {/* Quick Actions */}
-          <div className="card">
-            <h3 style={{ marginBottom: '1.5rem', fontSize: '1.5rem', color: '#2c3e50' }}>
-              ⚡ Quick Actions
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <button 
-                className="btn btn-primary"
-                onClick={() => window.location.href = '/products'}
-                style={{ 
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem'
-                }}
-              >
-                🛍️ Browse Products
-              </button>
-              <button 
-                className="btn btn-secondary"
-                onClick={() => window.location.href = '/orders'}
-                style={{ 
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem'
-                }}
-              >
-                📦 View Orders
-              </button>
-              <button 
-                className="btn btn-secondary"
-                disabled
-                style={{ 
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem',
-                  opacity: 0.5,
-                  cursor: 'not-allowed'
-                }}
-              >
-                💳 Payment Methods (Soon)
-              </button>
+          {ordersLoading ? (
+            <div className="ui-loading">
+              <div className="ui-spinner" />
+              <div style={{ color: "var(--muted)", fontWeight: 700 }}>Loading orders…</div>
             </div>
-          </div>
-        </div>
-      </div>
+          ) : orders.length === 0 ? (
+            <div className="ui-alert warn">
+              No orders yet. Start shopping to see your activity here.
+            </div>
+          ) : (
+            <div className="ui-list">
+              {recentOrders.map((o) => {
+                const statusUpper = (o.status || "").toUpperCase();
+                const paid = statusUpper === "PAID";
+                const label = paid ? "PAID" : statusUpper;
 
-      {/* Feature Cards */}
-      <div className="features" style={{ marginTop: '2rem' }}>
-        <div className="feature-card">
-          <div className="feature-icon">🎯</div>
-          <h3>Track Orders</h3>
-          <p>Monitor your order status in real-time and get updates on delivery</p>
-        </div>
-        <div className="feature-card">
-          <div className="feature-icon">⭐</div>
-          <h3>Save Favorites</h3>
-          <p>Keep track of your favorite products for quick access later</p>
-        </div>
-        <div className="feature-card">
-          <div className="feature-icon">🎁</div>
-          <h3>Exclusive Deals</h3>
-          <p>Get access to member-only discounts and special offers</p>
-        </div>
-      </div>
+                return (
+                  <div className="ui-item" key={o.id}>
+                    <div>
+                      <p className="ui-item-title">Order #{o.id}</p>
+                      <p className="ui-item-sub">
+                        {o.createdAt ? new Date(o.createdAt).toLocaleDateString() : "—"} • $
+                        {Number(o.totalAmount ?? 0).toFixed(2)}
+                        {Array.isArray(o.items) && o.items.length > 0
+                          ? ` • ${o.items.length} item${o.items.length > 1 ? "s" : ""}`
+                          : ""}
+                      </p>
+                    </div>
+                    <span className={`ui-badge ${paid ? "paid" : "unpaid"}`}>
+                      {label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
-      {/* System Status */}
-      <div className="card" style={{ 
-        marginTop: '2rem',
-        background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%)'
-      }}>
-        <h3 style={{ marginBottom: '1.5rem', color: '#2c3e50' }}>
-          🔧 System Status
-        </h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-            <div style={{ 
-              width: '12px', 
-              height: '12px', 
-              borderRadius: '50%', 
-              background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
-              boxShadow: '0 0 10px rgba(17, 153, 142, 0.5)'
-            }}></div>
-            <div>
-              <div style={{ fontWeight: '600', color: '#2c3e50' }}>User Service</div>
-              <div style={{ fontSize: '0.8rem', color: '#7f8c8d' }}>✅ Operational</div>
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-            <div style={{ 
-              width: '12px', 
-              height: '12px', 
-              borderRadius: '50%', 
-              background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
-              boxShadow: '0 0 10px rgba(17, 153, 142, 0.5)'
-            }}></div>
-            <div>
-              <div style={{ fontWeight: '600', color: '#2c3e50' }}>Product Service</div>
-              <div style={{ fontSize: '0.8rem', color: '#7f8c8d' }}>✅ Operational</div>
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-            <div style={{ 
-              width: '12px', 
-              height: '12px', 
-              borderRadius: '50%', 
-              background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
-              boxShadow: '0 0 10px rgba(17, 153, 142, 0.5)'
-            }}></div>
-            <div>
-              <div style={{ fontWeight: '600', color: '#2c3e50' }}>Order Service</div>
-              <div style={{ fontSize: '0.8rem', color: '#7f8c8d' }}>✅ Operational</div>
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-            <div style={{ 
-              width: '12px', 
-              height: '12px', 
-              borderRadius: '50%', 
-              background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
-              boxShadow: '0 0 10px rgba(17, 153, 142, 0.5)'
-            }}></div>
-            <div>
-              <div style={{ fontWeight: '600', color: '#2c3e50' }}>API Gateway</div>
-              <div style={{ fontSize: '0.8rem', color: '#7f8c8d' }}>✅ Operational</div>
-            </div>
+          <div className="ui-row" style={{ marginTop: 12 }}>
+            <button className="ui-btn ui-btn-soft" onClick={() => (window.location.href = "/orders")} type="button">
+              View all orders
+            </button>
+            <button className="ui-btn" onClick={() => (window.location.href = "/profile")} type="button">
+              Go to profile
+            </button>
           </div>
         </div>
       </div>

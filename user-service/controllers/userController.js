@@ -123,17 +123,103 @@ exports.getCurrentUser = async (req, res) => {
 // UPDATE CURRENT USER
 exports.updateUser = async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, email } = req.body;
 
     const updated = await User.findByIdAndUpdate(
       req.user._id,
-      { ...(name ? { name } : {}) },
+      { 
+        ...(name ? { name } : {}),
+        ...(email ? { email } : {})
+      },
       { new: true }
     ).select("-password");
 
     return res.json({ success: true, user: updated });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// ==========================================
+// CHANGE PASSWORD
+// ==========================================
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    // Validation
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password and new password are required"
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be at least 6 characters long"
+      });
+    }
+
+    // Get user with password field
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    // Verify current password
+    const isValidPassword = await bcrypt.compare(currentPassword, user.password);
+    if (!isValidPassword) {
+      return res.status(401).json({
+        success: false,
+        message: "Current password is incorrect"
+      });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    user.password = hashedPassword;
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: "Password changed successfully"
+    });
+  } catch (err) {
+    console.error("Change password error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to change password",
+      error: err.message
+    });
+  }
+};
+
+// ==========================================
+// DELETE ACCOUNT
+// ==========================================
+exports.deleteAccount = async (req, res) => {
+  try {
+    // Delete the user
+    await User.findByIdAndDelete(req.user._id);
+
+    return res.json({
+      success: true,
+      message: "Account deleted successfully"
+    });
+  } catch (err) {
+    console.error("Delete account error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete account",
+      error: err.message
+    });
   }
 };
 

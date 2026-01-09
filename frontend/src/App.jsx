@@ -10,11 +10,17 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
+import Profile from "./pages/Profile";
 import Products from "./pages/Products";
 import Orders from "./pages/Orders";
 import Cart from "./pages/Cart";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
 
 import "./App.css";
+import "./styles/ui.css";
+
 
 function App() {
   return (
@@ -42,11 +48,45 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
+
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute>
+                      <Profile />
+                    </ProtectedRoute>
+                  }
+                />
+
                 <Route
                   path="/orders"
                   element={
                     <ProtectedRoute>
                       <Orders />
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/about"
+                  element={
+                  <About />
+                  }
+                />
+
+                 <Route
+                  path="/contact"
+                  element={
+                  <Contact />
+                  }
+                />
+                
+
+                <Route
+                  path="/payment/success"
+                  element={
+                    <ProtectedRoute>
+                      <PaymentSuccess />
                     </ProtectedRoute>
                   }
                 />

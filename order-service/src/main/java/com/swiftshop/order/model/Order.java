@@ -1,7 +1,11 @@
 package com.swiftshop.order.model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
+
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "orders")
@@ -11,7 +15,6 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // ✅ Mongo-compatible user ID
     private String userId;
 
     private Double totalAmount;
@@ -20,6 +23,10 @@ public class Order {
     private OrderStatus status;
 
     private LocalDateTime createdAt;
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    private List<OrderItem> items = new ArrayList<>();
 
     public Order() {
         this.createdAt = LocalDateTime.now();
@@ -33,40 +40,26 @@ public class Order {
         this.status = OrderStatus.CREATED;
     }
 
-    public Long getId() {
-        return id;
-    }
+    public Long getId() { return id; }
+    public String getUserId() { return userId; }
+    public Double getTotalAmount() { return totalAmount; }
+    public OrderStatus getStatus() { return status; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public List<OrderItem> getItems() { return items; }
 
-    public String getUserId() {
-        return userId;
-    }
+    public void setUserId(String userId) { this.userId = userId; }
+    public void setTotalAmount(Double totalAmount) { this.totalAmount = totalAmount; }
+    public void setStatus(OrderStatus status) { this.status = status; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
-    public Double getTotalAmount() {
-        return totalAmount;
-    }
-
-    public OrderStatus getStatus() {
-        return status;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    // ✅ setters (important for POST requests)
-    public void setUserId(String userId) {
-        this.userId = userId;
-    }
-
-    public void setTotalAmount(Double totalAmount) {
-        this.totalAmount = totalAmount;
-    }
-
-    public void setStatus(OrderStatus status) {
-        this.status = status;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
+    // ✅ ensures relationship is always consistent
+    public void setItems(List<OrderItem> items) {
+        this.items.clear();
+        if (items != null) {
+            for (OrderItem item : items) {
+                item.setOrder(this);
+                this.items.add(item);
+            }
+        }
     }
 }

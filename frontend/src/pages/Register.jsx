@@ -1,13 +1,18 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import React, { useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import ReCAPTCHA from "react-google-recaptcha";
+import { useAuth } from "../context/AuthContext";
+
+const SITE_KEY = process.env.REACT_APP_RECAPTCHA_SITE_KEY;
 
 const Register = () => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
+  const captchaRef = useRef(null);
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const { register } = useAuth();
@@ -15,109 +20,141 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
-    // Validation
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError("Passwords do not match");
       return;
     }
 
     if (password.length < 8) {
-      setError('Password must be at least 8 characters');
+      setError("Password must be at least 8 characters");
+      return;
+    }
+
+    const recaptchaToken = captchaRef.current?.getValue();
+    if (!recaptchaToken) {
+      setError("Please complete the reCAPTCHA.");
       return;
     }
 
     setLoading(true);
-
     try {
-      await register(name, email, password);
-      navigate('/dashboard');
+      await register(name, email, password, recaptchaToken);
+      captchaRef.current?.reset();
+      navigate("/dashboard");
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
+      captchaRef.current?.reset();
+      setError(err.response?.data?.message || "Registration failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ maxWidth: '400px', margin: '2rem auto' }}>
-      <div className="card">
-        <div className="card-header">
-          <h2>Create Account</h2>
-          <p>Join SwiftShop today!</p>
+    <div className="auth-layout">
+      <div className="auth-left">
+        <h1>
+          Join <span style={{ color: "#ffc107" }}>Swift</span>Shop
+        </h1>
+        <p>
+          Create your account to shop electronics, save items to cart, and track
+          orders easily — all in one place.
+        </p>
+
+        <div className="auth-badges">
+          <span className="auth-badge">New deals</span>
+          <span className="auth-badge">Fast delivery</span>
+          <span className="auth-badge">Trusted products</span>
+        </div>
+      </div>
+
+      <div className="ui-card">
+        <div className="ui-card-header">
+          <div>
+            <h2>✨ Create Account</h2>
+            <p className="ui-muted">It takes less than a minute.</p>
+          </div>
         </div>
 
-        {error && (
-          <div className="alert alert-error">
-            {error}
-          </div>
-        )}
+        {error && <div className="ui-alert error">❌ {error}</div>}
 
-        <form onSubmit={handleSubmit} className="form">
-          <div className="form-group">
-            <label htmlFor="name">Full Name</label>
-            <input
-              type="text"
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              placeholder="John Doe"
-              disabled={loading}
-            />
-          </div>
+        <div className="ui-card-body">
+          <form onSubmit={handleSubmit} className="ui-form">
+            <div className="ui-field">
+              <label>Full Name</label>
+              <input
+                className="ui-input"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="John Doe"
+                disabled={loading}
+                required
+              />
+            </div>
 
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              placeholder="your@email.com"
-              disabled={loading}
-            />
-          </div>
+            <div className="ui-field">
+              <label>Email</label>
+              <input
+                className="ui-input"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your@email.com"
+                disabled={loading}
+                required
+              />
+            </div>
 
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="At least 8 characters"
-              disabled={loading}
-            />
-          </div>
+            <div className="ui-field">
+              <label>Password</label>
+              <input
+                className="ui-input"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="At least 8 characters"
+                disabled={loading}
+                required
+              />
+            </div>
 
-          <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              placeholder="Re-enter password"
-              disabled={loading}
-            />
-          </div>
+            <div className="ui-field">
+              <label>Confirm Password</label>
+              <input
+                className="ui-input"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Re-enter password"
+                disabled={loading}
+                required
+              />
+            </div>
 
-          <button type="submit" className="btn btn-success" disabled={loading}>
-            {loading ? 'Creating account...' : 'Register'}
-          </button>
-        </form>
+            {/* ✅ reCAPTCHA */}
+            <div className="ui-field" style={{ marginTop: 12 }}>
+              <ReCAPTCHA ref={captchaRef} sitekey={SITE_KEY} />
+            </div>
 
-        <p style={{ marginTop: '1.5rem', textAlign: 'center', color: '#7f8c8d' }}>
-          Already have an account?{' '}
-          <Link to="/login" style={{ color: '#3498db', textDecoration: 'none', fontWeight: '600' }}>
-            Login here
-          </Link>
-        </p>
+            <div className="ui-actions">
+              <button className="ui-btn primary" type="submit" disabled={loading}>
+                {loading ? "⏳ Creating..." : "Register"}
+              </button>
+              <Link className="ui-btn secondary" to="/login">
+                I have an account
+              </Link>
+            </div>
+
+            <p className="ui-center ui-muted" style={{ marginTop: 8 }}>
+              Already registered?{" "}
+              <Link className="ui-link" to="/login">
+                Login here
+              </Link>
+            </p>
+          </form>
+        </div>
       </div>
     </div>
   );

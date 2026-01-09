@@ -1,9 +1,9 @@
 // src/services/orderService.js
-import api from './api';
+import api from "./api";
 
 export const orderAPI = {
   createOrder: async (orderData) => {
-    const res = await api.post('/orders', orderData);
+    const res = await api.post("/orders", orderData);
     return res.data;
   },
 
@@ -19,13 +19,13 @@ export const orderAPI = {
 
   payOrder: async (id) => {
     const res = await api.put(`/orders/${id}/pay`);
-    return res.data;
+    return res.data; // expected: { url: "https://checkout.stripe.com/..." }
   },
 
   getInvoice: async (id) => {
     const res = await api.get(`/orders/${id}/invoice`);
     return res.data;
-  }
+  },
 };
 
 export default orderAPI;

@@ -90,6 +90,38 @@ app.put("/users/me", async (req, res) => {
   }
 });
 
+// Change password route
+app.put("/users/me/password", async (req, res) => {
+  try {
+    const response = await axios.put(
+      `${USER_SERVICE}/api/users/me/password`,
+      req.body,
+      {
+        headers: { Authorization: req.headers.authorization },
+      }
+    );
+    res.json(response.data);
+  } catch (error: any) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { success: false, error: "User Service error" });
+  }
+});
+
+// Delete account route
+app.delete("/users/me", async (req, res) => {
+  try {
+    const response = await axios.delete(`${USER_SERVICE}/api/users/me`, {
+      headers: { Authorization: req.headers.authorization },
+    });
+    res.json(response.data);
+  } catch (error: any) {
+    res
+      .status(error.response?.status || 500)
+      .json(error.response?.data || { success: false, error: "User Service error" });
+  }
+});
+
 app.post("/users/logout", async (req, res) => {
   try {
     const response = await axios.post(
@@ -447,9 +479,11 @@ app.listen(PORT, () => {
   console.log("  POST   /auth/login");
   console.log("  GET    /users/me");
   console.log("  PUT    /users/me");
+  console.log("  PUT    /users/me/password  ⭐ NEW");
+  console.log("  DELETE /users/me  ⭐ NEW");
   console.log("  POST   /users/logout");
   console.log("  GET    /users");
-  console.log("  POST   /checkout/create-session  ⭐");
+  console.log("  POST   /checkout/create-session");
   console.log("  POST   /payments/checkout");
   console.log("  POST   /orders");
   console.log("  GET    /orders/:id");
